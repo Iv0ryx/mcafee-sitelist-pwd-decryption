@@ -12,19 +12,17 @@
 
 import sys
 import base64
-from Crypto.Cipher import DES3
-from Crypto.Hash import SHA
-
+from Cryptodome.Cipher import DES3
+from Cryptodome.Hash import SHA
 
 # hardcoded XOR key
-KEY = bytearray.fromhex("12150F10111C1A060A1F1B1817160519").decode("utf-8")
+KEY = bytes.fromhex("12150F10111C1A060A1F1B1817160519")
 
 def sitelist_xor(xs):
     result = bytearray(0)
     for i, c in enumerate(xs):
-        cb = c.to_bytes(1, byteorder="big")
-        result += (ord(cb) ^ ord(KEY[i%16])).to_bytes(1, byteorder="big")
-    return result
+        result.append(c ^ KEY[i%16])
+    return bytes(result)
 
 def des3_ecb_decrypt(data):
     # hardcoded 3DES key
@@ -33,7 +31,7 @@ def des3_ecb_decrypt(data):
     des3 = DES3.new(key, DES3.MODE_ECB)
     data += bytearray(64 - (len(data) % 64))
     decrypted = des3.decrypt(data)
-    return decrypted[0:decrypted.find(0)] or "<empty>"
+    return decrypted.partition(b'\x00')[0] or b"<empty>"
 
 if __name__ == "__main__":
 
@@ -43,7 +41,7 @@ if __name__ == "__main__":
         sys.exit(0)
 
     # read arg
-    encrypted_password = base64.b64decode(bytes(sys.argv[1], "utf-8"))
+    encrypted_password = base64.b64decode(sys.argv[1].encode("utf-8"))
     # decrypt
     passwdXOR = sitelist_xor(encrypted_password)
     password = des3_ecb_decrypt(passwdXOR).decode("utf-8")
